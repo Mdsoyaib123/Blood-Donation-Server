@@ -35,6 +35,7 @@ async function run() {
 
     // collection
     const usersCollection = client.db("BloodDonationDb").collection("users");
+    const donationRequestCollection = client.db("BloodDonationDb").collection("donationRequest");
 
     // verifyToken
     const verifyToken = (req, res, next) => {
@@ -86,6 +87,12 @@ async function run() {
       const result = await usersCollection.find().toArray();
       res.send(result);
     });
+    app.get('/isActive/:email',async(req,res)=>{
+      const email = req.params.email 
+      const query ={ email : email }
+      const result =  await usersCollection.findOne(query)
+      res.send(result)
+    })
     app.get('/users/adminProfile/:email',verifyToken,verifyAdmin,async(req,res)=>{
       const email = req.params.email 
       const query = {email: email}
@@ -216,6 +223,46 @@ async function run() {
       };
       const result = await usersCollection.updateOne(query, updateDoc);
         res.send(result);
+    })
+
+    // donation collection 
+    app.get('/donation',async(req,res)=>{
+      const result =await donationRequestCollection.find().toArray()
+      res.send(result)
+    })
+    app.get('/donation/:id',async(req,res)=>{
+      const id = req.params.id 
+      const query = {_id: new ObjectId(id)}
+      const result = await donationRequestCollection.findOne(query)
+      res.send(result)
+    })
+    app.get('/userDonationRequest/:email',async(req,res)=>{
+      const email = req.params.email 
+      const query = {requesterEmail:email}
+      const result = await donationRequestCollection.find(query).toArray()
+      res.send(result)
+    })
+    app.post('/donation',async(req,res)=>{
+      const donationData = req.body 
+      const result = await donationRequestCollection.insertOne(donationData)
+      res.send(result)
+    })
+    app.put('/pendingUpdate/:id',async(req,res)=>{
+      const data = req.body
+      const id = req.params.id 
+      console.log(id);
+      const query = {_id:new ObjectId(id)}
+      
+      const updateDoc ={
+        $set:{
+          status: data.status,
+          donorName: data.donorName,
+          donarEmail : data.donarEmail
+        }
+      } 
+      const result = await donationRequestCollection.updateOne(query,updateDoc)
+     
+      res.send(result)
     })
 
     // Send a ping to confirm a successful connection
