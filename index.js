@@ -70,7 +70,7 @@ async function run() {
     app.post("/jwt", async (req, res) => {
       const user = req.body;
       const token = jwt.sign(user, process.env.ACCESS_TOKEN, {
-        expiresIn: "2h",
+        expiresIn: "24h",
       });
       res
         .cookie("token", token, {
@@ -106,9 +106,11 @@ async function run() {
      
       res.send(result)
     })
-    app.get('/adminUpdateProfile/:id',async(req,res)=>{
-      const id = req.params.id 
-     console.log(id);
+    app.get('/UpdateProfile/:id',async(req,res)=>{
+      const id = req.params.id
+      const query= {_id: new ObjectId(id)}
+      const result = await usersCollection.findOne(query) 
+     res.send(result)
     })
 
     app.get("/users/admin/:email", verifyToken, async (req, res) => {
@@ -152,6 +154,23 @@ async function run() {
       const result = await usersCollection.insertOne(userInfo);
       res.send(result);
     });
+    app.patch('/updateProfile/:id',async(req,res)=>{
+      const data = req.body
+      
+      const id = req.params.id 
+      const query ={_id: new ObjectId(id)} 
+      const updateDoc ={
+        $set:{
+            name: data.name ,
+            bloodGroup: data.blood,
+            Avatar : data.photoUrl,
+            District: data.district,
+            upazila : data.upazila
+        }
+      }
+      const result = await usersCollection.updateOne(query,updateDoc)
+      res.send(result)
+    })
 
     app.patch('/users/block/:id',verifyToken,verifyAdmin,async(req,res)=>{
       const id = req.params.id 
