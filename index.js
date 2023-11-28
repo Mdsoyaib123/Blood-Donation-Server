@@ -35,7 +35,11 @@ async function run() {
 
     // collection
     const usersCollection = client.db("BloodDonationDb").collection("users");
-    const donationRequestCollection = client.db("BloodDonationDb").collection("donationRequest");
+    const blogsCollection = client.db("BloodDonationDb").collection("blogs");
+    const fundingCollection = client.db("BloodDonationDb").collection("funding"); 
+    const donationRequestCollection = client    
+      .db("BloodDonationDb")
+      .collection("donationRequest");
 
     // verifyToken
     const verifyToken = (req, res, next) => {
@@ -56,7 +60,7 @@ async function run() {
     // verifyAdmin
     const verifyAdmin = async (req, res, next) => {
       const email = req.user.email;
-      
+
       const query = { email: email };
       const user = await usersCollection.findOne(query);
       const isAdmin = user?.role === "admin";
@@ -65,7 +69,6 @@ async function run() {
       }
       next();
     };
-
 
     // create jwt token
     app.post("/jwt", async (req, res) => {
@@ -83,42 +86,47 @@ async function run() {
     });
 
     //  usersCollection
-    app.get("/users",verifyToken,verifyAdmin, async (req, res) => {
+    app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
       const result = await usersCollection.find().toArray();
       res.send(result);
     });
-    app.get('/isActive/:email',async(req,res)=>{
-      const email = req.params.email 
-      const query ={ email : email }
-      const result =  await usersCollection.findOne(query)
-      res.send(result)
-    })
-    app.get('/users/adminProfile/:email',verifyToken,verifyAdmin,async(req,res)=>{
-      const email = req.params.email 
-      const query = {email: email}
-      const result = await usersCollection.findOne(query)
-      res.send(result)
-    })
-    app.get('/users/volunteerProfile/:email',verifyToken,async(req,res)=>{
-      const email = req.params.email 
-      const query = {email: email}
-      const result = await usersCollection.findOne(query)
-     
-      res.send(result)
-    })
-    app.get('/users/userProfile/:email',verifyToken,async(req,res)=>{
-      const email = req.params.email 
-      const query = {email: email}
-      const result = await usersCollection.findOne(query)
-     
-      res.send(result)
-    })
-    app.get('/UpdateProfile/:id',async(req,res)=>{
-      const id = req.params.id
-      const query= {_id: new ObjectId(id)}
-      const result = await usersCollection.findOne(query) 
-     res.send(result)
-    })
+    app.get("/isActive/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const result = await usersCollection.findOne(query);
+      res.send(result);
+    });
+    app.get(
+      "/users/adminProfile/:email",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const email = req.params.email;
+        const query = { email: email };
+        const result = await usersCollection.findOne(query);
+        res.send(result);
+      }
+    );
+    app.get("/users/volunteerProfile/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const result = await usersCollection.findOne(query);
+
+      res.send(result);
+    });
+    app.get("/users/userProfile/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const result = await usersCollection.findOne(query);
+
+      res.send(result);
+    });
+    app.get("/UpdateProfile/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await usersCollection.findOne(query);
+      res.send(result);
+    });
 
     app.get("/users/admin/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
@@ -161,107 +169,245 @@ async function run() {
       const result = await usersCollection.insertOne(userInfo);
       res.send(result);
     });
-    app.patch('/updateProfile/:id',async(req,res)=>{
-      const data = req.body
-      
+    app.patch("/updateProfile/:id", async (req, res) => {
+      const data = req.body;
+
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          name: data.name,
+          bloodGroup: data.blood,
+          Avatar: data.photoUrl,
+          District: data.district,
+          upazila: data.upazila,
+        },
+      };
+      const result = await usersCollection.updateOne(query, updateDoc);
+      res.send(result);
+    });
+
+    app.patch(
+      "/users/block/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            status: "Blocked",
+          },
+        };
+        const result = await usersCollection.updateOne(query, updateDoc);
+        res.send(result);
+      }
+    );
+
+    app.patch(
+      "/users/unblock/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            status: "Active",
+          },
+        };
+        const result = await usersCollection.updateOne(query, updateDoc);
+        res.send(result);
+      }
+    );
+    app.patch(
+      "/users/admin/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            role: "admin",
+          },
+        };
+        const result = await usersCollection.updateOne(query, updateDoc);
+        res.send(result);
+      }
+    );
+    app.patch(
+      "/users/volunteer/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            role: "Volunteer",
+          },
+        };
+        const result = await usersCollection.updateOne(query, updateDoc);
+        res.send(result);
+      }
+    );
+
+    // donation collection
+    app.get('/donation',async(req,res)=>{
+      const result  = await donationRequestCollection.find().toArray()
+      res.send(result)
+    })
+    app.get("/allDonationRequest", async (req, res) => {
+      const result = await donationRequestCollection.find().toArray();
+      res.send(result);
+    });
+    app.get("/donation/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await donationRequestCollection.findOne(query);
+      res.send(result);
+    });
+   
+    app.get("/userDonationRequest/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { requesterEmail: email };
+      const result = await donationRequestCollection.find(query).toArray();
+      res.send(result);
+    });
+    // post donation in database
+    app.post("/donation", async (req, res) => {
+      const donationData = req.body;
+      const result = await donationRequestCollection.insertOne(donationData);
+      res.send(result);
+    });
+    // update cancel status
+    app.patch("/updateStatusDone/:id", async (req, res) => {
+      const id = req.params.id;
+      const data = req.body;
+      console.log(data);
+      const query = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          status: data.status,
+        },
+      };
+      const result = await donationRequestCollection.updateOne(
+        query,
+        updateDoc
+      );
+      res.send(result);
+    });
+    // update cancel status
+    app.patch("/updateStatusCancel/:id", async (req, res) => {
+      const id = req.params.id;
+      const data = req.body;
+      // console.log(data);
+      const query = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          status: data.status,
+        },
+      };
+      const result = await donationRequestCollection.updateOne(
+        query,
+        updateDoc
+      );
+      res.send(result);
+    });
+    // Edit and Update donation
+    app.put('/updateDonation/:id',async(req,res)=>{
       const id = req.params.id 
-      const query ={_id: new ObjectId(id)} 
-      const updateDoc ={
-        $set:{
-            name: data.name ,
-            bloodGroup: data.blood,
-            Avatar : data.photoUrl,
-            District: data.district,
-            upazila : data.upazila
+      const data = req.body 
+      // console.log(data);
+      const query = {_id : new ObjectId(id)}
+      const updateDoc = {
+        $set: {
+          requesterName: data.requesterName,
+          requesterEmail: data.requesterEmail,
+          recipientName: data.recipientName,
+          hospitalName: data.hospitalName,
+          fullAddress : data.fullAddress,
+          donationDate: data.donationDate,
+          donationTime:data.donationTime,
+          requestMessage: data.requestMessage,
+          district: data.district,
+          upazila: data.upazila,
+          status: data.status
         }
       }
-      const result = await usersCollection.updateOne(query,updateDoc)
+      const result = await donationRequestCollection.updateOne(query,updateDoc)
       res.send(result)
     })
+    // status pending update
+    app.put("/pendingUpdate/:id", async (req, res) => {
+      const data = req.body;
+      const id = req.params.id;
+      // console.log(id);
+      const query = { _id: new ObjectId(id) };
 
-    app.patch('/users/block/:id',verifyToken,verifyAdmin,async(req,res)=>{
-      const id = req.params.id 
-      const query = { _id: new ObjectId(id) };
       const updateDoc = {
         $set: {
-          status: "Blocked",
-        },
-      };
-      const result = await usersCollection.updateOne(query, updateDoc);
-        res.send(result);
-    })
-
-    app.patch('/users/unblock/:id',verifyToken,verifyAdmin,async(req,res)=>{
-      const id = req.params.id 
-      const query = { _id: new ObjectId(id) };
-      const updateDoc = {
-        $set: {
-          status: "Active",
-        },
-      };
-      const result = await usersCollection.updateOne(query, updateDoc);
-        res.send(result);
-    })
-    app.patch('/users/admin/:id',verifyToken,verifyAdmin,async(req,res)=>{
-      const id = req.params.id 
-      const query = { _id: new ObjectId(id) };
-      const updateDoc = {
-        $set: {
-          role: "admin",
-        },
-      };
-      const result = await usersCollection.updateOne(query, updateDoc);
-        res.send(result);
-    })
-    app.patch('/users/volunteer/:id',verifyToken,verifyAdmin,async(req,res)=>{
-      const id = req.params.id 
-      const query = { _id: new ObjectId(id) };
-      const updateDoc = {
-        $set: {
-          role: "Volunteer",
-        },
-      };
-      const result = await usersCollection.updateOne(query, updateDoc);
-        res.send(result);
-    })
-
-    // donation collection 
-    app.get('/donation',async(req,res)=>{
-      const result =await donationRequestCollection.find().toArray()
-      res.send(result)
-    })
-    app.get('/donation/:id',async(req,res)=>{
-      const id = req.params.id 
-      const query = {_id: new ObjectId(id)}
-      const result = await donationRequestCollection.findOne(query)
-      res.send(result)
-    })
-    app.get('/userDonationRequest/:email',async(req,res)=>{
-      const email = req.params.email 
-      const query = {requesterEmail:email}
-      const result = await donationRequestCollection.find(query).toArray()
-      res.send(result)
-    })
-    app.post('/donation',async(req,res)=>{
-      const donationData = req.body 
-      const result = await donationRequestCollection.insertOne(donationData)
-      res.send(result)
-    })
-    app.put('/pendingUpdate/:id',async(req,res)=>{
-      const data = req.body
-      const id = req.params.id 
-      console.log(id);
-      const query = {_id:new ObjectId(id)}
-      
-      const updateDoc ={
-        $set:{
           status: data.status,
           donorName: data.donorName,
-          donarEmail : data.donarEmail
+          donarEmail: data.donarEmail,
+        },
+      };
+      const result = await donationRequestCollection.updateOne(
+        query,
+        updateDoc
+      );
+
+      res.send(result);
+    });
+    // donation delete 
+    app.delete('/deleteDonation/:id',async(req,res)=>{
+      const id = req.params.id 
+      const query = {_id :new ObjectId(id)}
+      const result = await donationRequestCollection.deleteOne(query)
+      res.send(result)
+    })
+
+
+    // blogsCollection data 
+    app.get('/allBlogs',async(req,res)=>{
+      const result = await blogsCollection.find().toArray()
+      res.send(result)
+    })
+    app.post('/blogPost',async(req,res)=>{
+      const blogData = req.body 
+      const result = await blogsCollection.insertOne(blogData)
+      res.send(result)
+    })
+    app.patch('/updateStatusPublish/:id',async(req,res)=>{
+      const id = req.params.id 
+      const data = req.body
+      console.log(data);
+      const query = { _id : new ObjectId(id)}
+      const updateDoc = {
+        $set:{
+          status: data.status
         }
-      } 
-      const result = await donationRequestCollection.updateOne(query,updateDoc)
-     
+      }
+      const result = await blogsCollection.updateOne(query,updateDoc)
+      res.send(result)
+    })
+    app.patch('/updateStatusDraft/:id',async(req,res)=>{
+      const id = req.params.id 
+      const data = req.body
+      const query = { _id : new ObjectId(id)}
+      const updateDoc = {
+        $set:{
+          status: data.status
+        }
+      }
+      const result = await blogsCollection.updateOne(query,updateDoc)
+      res.send(result)
+    })
+    app.delete('/deleteBlog/:id',async(req,res)=>{
+      const id = req.params.id 
+      const query = { _id: new ObjectId(id)}
+      const result = await blogsCollection.deleteOne(query)
       res.send(result)
     })
 
