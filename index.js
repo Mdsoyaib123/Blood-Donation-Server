@@ -6,7 +6,7 @@ require("dotenv").config();
 const cors = require("cors");
 const port = process.env.PORT || 5000;
 const cookieParser = require("cookie-parser");
-
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 // middleWare
 app.use(express.json());
 app.use(cookieParser());
@@ -36,8 +36,10 @@ async function run() {
     // collection
     const usersCollection = client.db("BloodDonationDb").collection("users");
     const blogsCollection = client.db("BloodDonationDb").collection("blogs");
-    const fundingCollection = client.db("BloodDonationDb").collection("funding"); 
-    const donationRequestCollection = client    
+    const fundingCollection = client
+      .db("BloodDonationDb")
+      .collection("funding");
+    const donationRequestCollection = client
       .db("BloodDonationDb")
       .collection("donationRequest");
 
@@ -86,10 +88,18 @@ async function run() {
     });
 
     //  usersCollection
-    app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
-      const result = await usersCollection.find().toArray();
+    app.get("/users",verifyToken,verifyAdmin, async (req, res) => {
+      const size = parseInt(req.query.size);
+      const page = parseInt(req.query.page);
+      console.log("pagination data", page, size);
+      const result = await usersCollection
+        .find()
+        .skip(page * size)
+        .limit(size)
+        .toArray();
       res.send(result);
     });
+
     app.get("/isActive/:email", async (req, res) => {
       const email = req.params.email;
       const query = { email: email };
@@ -254,26 +264,51 @@ async function run() {
     );
 
     // donation collection
-    app.get('/donation',async(req,res)=>{
-      const result  = await donationRequestCollection.find().toArray()
-      res.send(result)
-    })
-    app.get("/allDonationRequest", async (req, res) => {
+    app.get("/donation", async (req, res) => {
       const result = await donationRequestCollection.find().toArray();
       res.send(result);
     });
+
+    app.get("/allDonationRequest",verifyToken, async (req, res) => {
+      const size = parseInt(req.query.size);
+      const page = parseInt(req.query.page);
+      console.log("pagination data", page, size);
+      const result = await donationRequestCollection
+        .find()
+        .skip(page * size)
+        .limit(size)
+        .toArray();
+        res.send(result)
+    });
+
     app.get("/donation/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await donationRequestCollection.findOne(query);
       res.send(result);
     });
-   
+
+   app.get('/userDonationRequestDashboard/:email',async(req,res)=>{
+    const email = req.params.email 
+    const query = {requesterEmail : email}
+    const result  = await donationRequestCollection.find(query).toArray()
+    res.send(result)
+   })
     app.get("/userDonationRequest/:email", async (req, res) => {
+      const size = parseInt(req.query.size);
+      const page = parseInt(req.query.page);
+      console.log("pagination data", page, size);
+
       const email = req.params.email;
       const query = { requesterEmail: email };
-      const result = await donationRequestCollection.find(query).toArray();
-      res.send(result);
+      const length= await donationRequestCollection.find(query).toArray()
+
+      const result = await donationRequestCollection
+        .find(query)
+        .skip(page * size)
+        .limit(size)
+        .toArray();
+      res.send({result,length});
     });
     // post donation in database
     app.post("/donation", async (req, res) => {
@@ -299,7 +334,7 @@ async function run() {
       res.send(result);
     });
     // update cancel status
-    app.patch("/updateStatusCancel/:id", async (req, res) => {
+    app.patch("/updateStatusCancel/:id",verifyToken, async (req, res) => {
       const id = req.params.id;
       const data = req.body;
       // console.log(data);
@@ -316,31 +351,34 @@ async function run() {
       res.send(result);
     });
     // Edit and Update donation
-    app.put('/updateDonation/:id',async(req,res)=>{
-      const id = req.params.id 
-      const data = req.body 
+    app.put("/updateDonation/:id",verifyToken,verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const data = req.body;
       // console.log(data);
-      const query = {_id : new ObjectId(id)}
+      const query = { _id: new ObjectId(id) };
       const updateDoc = {
         $set: {
           requesterName: data.requesterName,
           requesterEmail: data.requesterEmail,
           recipientName: data.recipientName,
           hospitalName: data.hospitalName,
-          fullAddress : data.fullAddress,
+          fullAddress: data.fullAddress,
           donationDate: data.donationDate,
-          donationTime:data.donationTime,
+          donationTime: data.donationTime,
           requestMessage: data.requestMessage,
           district: data.district,
           upazila: data.upazila,
-          status: data.status
-        }
-      }
-      const result = await donationRequestCollection.updateOne(query,updateDoc)
-      res.send(result)
-    })
+          status: data.status,
+        },
+      };
+      const result = await donationRequestCollection.updateOne(
+        query,
+        updateDoc
+      );
+      res.send(result);
+    });
     // status pending update
-    app.put("/pendingUpdate/:id", async (req, res) => {
+    app.put("/pendingUpdate/:id",verifyToken, async (req, res) => {
       const data = req.body;
       const id = req.params.id;
       // console.log(id);
@@ -360,56 +398,94 @@ async function run() {
 
       res.send(result);
     });
-    // donation delete 
-    app.delete('/deleteDonation/:id',async(req,res)=>{
-      const id = req.params.id 
-      const query = {_id :new ObjectId(id)}
-      const result = await donationRequestCollection.deleteOne(query)
-      res.send(result)
-    })
+    // donation delete
+    app.delete("/deleteDonation/:id",verifyToken,verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await donationRequestCollection.deleteOne(query);
+      res.send(result);
+    });
 
-
-    // blogsCollection data 
-    app.get('/allBlogs',async(req,res)=>{
-      const result = await blogsCollection.find().toArray()
-      res.send(result)
-    })
-    app.post('/blogPost',async(req,res)=>{
-      const blogData = req.body 
-      const result = await blogsCollection.insertOne(blogData)
-      res.send(result)
-    })
-    app.patch('/updateStatusPublish/:id',async(req,res)=>{
-      const id = req.params.id 
-      const data = req.body
+    // blogsCollection data
+    app.get("/allBlogs", async (req, res) => {
+      const result = await blogsCollection.find().toArray();
+      res.send(result);
+    });
+    app.post("/blogPost",verifyToken, async (req, res) => {
+      const blogData = req.body;
+      const result = await blogsCollection.insertOne(blogData);
+      res.send(result);
+    });
+    app.patch("/updateStatusPublish/:id", async (req, res) => {
+      const id = req.params.id;
+      const data = req.body;
       console.log(data);
-      const query = { _id : new ObjectId(id)}
+      const query = { _id: new ObjectId(id) };
       const updateDoc = {
-        $set:{
-          status: data.status
-        }
-      }
-      const result = await blogsCollection.updateOne(query,updateDoc)
-      res.send(result)
-    })
-    app.patch('/updateStatusDraft/:id',async(req,res)=>{
-      const id = req.params.id 
-      const data = req.body
-      const query = { _id : new ObjectId(id)}
+        $set: {
+          status: data.status,
+        },
+      };
+      const result = await blogsCollection.updateOne(query, updateDoc);
+      res.send(result);
+    });
+    app.patch("/updateStatusDraft/:id", async (req, res) => {
+      const id = req.params.id;
+      const data = req.body;
+      const query = { _id: new ObjectId(id) };
       const updateDoc = {
-        $set:{
-          status: data.status
-        }
-      }
-      const result = await blogsCollection.updateOne(query,updateDoc)
-      res.send(result)
-    })
-    app.delete('/deleteBlog/:id',async(req,res)=>{
-      const id = req.params.id 
-      const query = { _id: new ObjectId(id)}
-      const result = await blogsCollection.deleteOne(query)
-      res.send(result)
-    })
+        $set: {
+          status: data.status,
+        },
+      };
+      const result = await blogsCollection.updateOne(query, updateDoc);
+      res.send(result);
+    });
+    app.delete("/deleteBlog/:id",verifyToken,verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await blogsCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    // dashboard statist
+    app.get("/dashboard/statist", async (req, res) => {
+      const totalUser = await usersCollection.estimatedDocumentCount();
+      const allFund = await fundingCollection.find().toArray();
+      const totalAmount = allFund.reduce(
+        (accumulator, currentValue) => accumulator + currentValue.amount,
+        0
+      );
+      const totalDonation =
+        await donationRequestCollection.estimatedDocumentCount();
+      res.send({ totalUser, totalAmount, totalDonation });
+    });
+
+    // fundingCollection
+    app.get("/payments", async (req, res) => {
+      const result = await fundingCollection.find().toArray();
+      res.send(result);
+    });
+
+    // payment intent
+    app.post("/create-payment-intent", async (req, res) => {
+      const { amount } = req.body;
+      const DonateAmount = parseInt(amount * 100);
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: DonateAmount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+
+    app.post("/payments", async (req, res) => {
+      const Donate = req.body;
+      const result = await fundingCollection.insertOne(Donate);
+      res.send(result);
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
