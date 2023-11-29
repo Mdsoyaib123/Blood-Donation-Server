@@ -12,7 +12,11 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: [
+      "http://localhost:5173",
+      'https://blood-donation-a244f.web.app',
+      'https://blood-donation-a244f.firebaseapp.com'
+    ],
     credentials: true,
   })
 );
@@ -181,7 +185,6 @@ async function run() {
     });
     app.patch("/updateProfile/:id", async (req, res) => {
       const data = req.body;
-
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const updateDoc = {
@@ -351,7 +354,7 @@ async function run() {
       res.send(result);
     });
     // Edit and Update donation
-    app.put("/updateDonation/:id",verifyToken,verifyAdmin, async (req, res) => {
+    app.put("/updateDonation/:id",verifyToken, async (req, res) => {
       const id = req.params.id;
       const data = req.body;
       // console.log(data);
@@ -399,7 +402,7 @@ async function run() {
       res.send(result);
     });
     // donation delete
-    app.delete("/deleteDonation/:id",verifyToken,verifyAdmin, async (req, res) => {
+    app.delete("/deleteDonation/:id",verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await donationRequestCollection.deleteOne(query);
@@ -488,10 +491,10 @@ async function run() {
     });
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
