@@ -14,8 +14,8 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173",
-      'https://blood-donation-a244f.web.app',
-      'https://blood-donation-a244f.firebaseapp.com'
+      "https://blood-donation-a244f.web.app",
+      "https://blood-donation-a244f.firebaseapp.com",
     ],
     credentials: true,
   })
@@ -92,7 +92,16 @@ async function run() {
     });
 
     //  usersCollection
-    app.get("/users",verifyToken,verifyAdmin, async (req, res) => {
+    // problem
+    app.get("/searchData", async (req, res) => {
+      const query1 = { bloodGroup: req.query.blood };
+      const query2 = { District: req.query.district };
+      const query3 = { upazila: req.query.upazila };
+      const result = await usersCollection.find(query1 && query2 && query3).toArray();
+      res.send(result);
+    });
+
+    app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
       const size = parseInt(req.query.size);
       const page = parseInt(req.query.page);
       console.log("pagination data", page, size);
@@ -269,10 +278,11 @@ async function run() {
     // donation collection
     app.get("/donation", async (req, res) => {
       const result = await donationRequestCollection.find().toArray();
+      // console.log(result);
       res.send(result);
     });
 
-    app.get("/allDonationRequest",verifyToken, async (req, res) => {
+    app.get("/allDonationRequest", verifyToken, async (req, res) => {
       const size = parseInt(req.query.size);
       const page = parseInt(req.query.page);
       console.log("pagination data", page, size);
@@ -281,7 +291,7 @@ async function run() {
         .skip(page * size)
         .limit(size)
         .toArray();
-        res.send(result)
+      res.send(result);
     });
 
     app.get("/donation/:id", async (req, res) => {
@@ -291,12 +301,12 @@ async function run() {
       res.send(result);
     });
 
-   app.get('/userDonationRequestDashboard/:email',async(req,res)=>{
-    const email = req.params.email 
-    const query = {requesterEmail : email}
-    const result  = await donationRequestCollection.find(query).toArray()
-    res.send(result)
-   })
+    app.get("/userDonationRequestDashboard/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { requesterEmail: email };
+      const result = await donationRequestCollection.find(query).toArray();
+      res.send(result);
+    });
     app.get("/userDonationRequest/:email", async (req, res) => {
       const size = parseInt(req.query.size);
       const page = parseInt(req.query.page);
@@ -304,14 +314,14 @@ async function run() {
 
       const email = req.params.email;
       const query = { requesterEmail: email };
-      const length= await donationRequestCollection.find(query).toArray()
+      const length = await donationRequestCollection.find(query).toArray();
 
       const result = await donationRequestCollection
         .find(query)
         .skip(page * size)
         .limit(size)
         .toArray();
-      res.send({result,length});
+      res.send({ result, length });
     });
     // post donation in database
     app.post("/donation", async (req, res) => {
@@ -337,7 +347,7 @@ async function run() {
       res.send(result);
     });
     // update cancel status
-    app.patch("/updateStatusCancel/:id",verifyToken, async (req, res) => {
+    app.patch("/updateStatusCancel/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const data = req.body;
       // console.log(data);
@@ -354,7 +364,7 @@ async function run() {
       res.send(result);
     });
     // Edit and Update donation
-    app.put("/updateDonation/:id",verifyToken, async (req, res) => {
+    app.put("/updateDonation/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const data = req.body;
       // console.log(data);
@@ -381,7 +391,7 @@ async function run() {
       res.send(result);
     });
     // status pending update
-    app.put("/pendingUpdate/:id",verifyToken, async (req, res) => {
+    app.put("/pendingUpdate/:id", verifyToken, async (req, res) => {
       const data = req.body;
       const id = req.params.id;
       // console.log(id);
@@ -402,7 +412,7 @@ async function run() {
       res.send(result);
     });
     // donation delete
-    app.delete("/deleteDonation/:id",verifyToken, async (req, res) => {
+    app.delete("/deleteDonation/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await donationRequestCollection.deleteOne(query);
@@ -414,7 +424,7 @@ async function run() {
       const result = await blogsCollection.find().toArray();
       res.send(result);
     });
-    app.post("/blogPost",verifyToken, async (req, res) => {
+    app.post("/blogPost", verifyToken, async (req, res) => {
       const blogData = req.body;
       const result = await blogsCollection.insertOne(blogData);
       res.send(result);
@@ -444,12 +454,17 @@ async function run() {
       const result = await blogsCollection.updateOne(query, updateDoc);
       res.send(result);
     });
-    app.delete("/deleteBlog/:id",verifyToken,verifyAdmin, async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await blogsCollection.deleteOne(query);
-      res.send(result);
-    });
+    app.delete(
+      "/deleteBlog/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await blogsCollection.deleteOne(query);
+        res.send(result);
+      }
+    );
 
     // dashboard statist
     app.get("/dashboard/statist", async (req, res) => {
@@ -491,10 +506,10 @@ async function run() {
     });
 
     // Send a ping to confirm a successful connection
-    // await client.db("admin").command({ ping: 1 });
-    // console.log(
-    //   "Pinged your deployment. You successfully connected to MongoDB!"
-    // );
+    await client.db("admin").command({ ping: 1 });
+    console.log(
+      "Pinged your deployment. You successfully connected to MongoDB!"
+    );
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
